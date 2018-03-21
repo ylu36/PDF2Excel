@@ -1,14 +1,13 @@
 import java.util.*;
 import java.io.*;
-import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.*;
-import org.apache.xmlbeans.*;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.pdfbox.text.PDFTextStripperByArea;
 class Benefix {
-    static String text, body[] = new String[5];
+    static String text;
+    static int rowNo;
+    static String body[] = new String[5];
     static Double data[] = new Double[47];
 
     public static void parseEachPage() {
@@ -29,16 +28,15 @@ class Benefix {
         Scanner s = new Scanner(text);
         for(int i = 1; i < 46; i ++) {
             data[i] = s.nextDouble();
-            System.out.println(i+" "+data[i]);
+            // System.out.println(i+" "+data[i]);
             if(s.hasNextInt())
                 s.nextInt();
             else break;
         }
         data[0] = data[1];
         data[46] = data[45];
-        index = text.indexOf("area definitions");
-        text = text.substring(index+19);
-       // System.out.println(data[44]);
+        // index = text.indexOf("area definitions");
+        //text = text.substring(index+10);
     }
 
     public static void writeXLSXFile(int index) throws IOException {
@@ -59,9 +57,9 @@ class Benefix {
             cell.setCellValue(body[i]);
         }
         for(int i = 0; i < 47; i++) {
-            cell = row.getCell(i);
+            cell = row.getCell(i+5);
             if (cell == null) {
-                cell = row.createCell(i);
+                cell = row.createCell(i+5);
             }
             cell.setCellValue(data[i]);
         }
@@ -72,18 +70,26 @@ class Benefix {
     }
 
     public static void main(String[] s) throws IOException {
-        String filename = "";
-        PDDocument document = PDDocument.load(new File("para0" +1+".pdf"));
-        if (!document.isEncrypted()) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            text = stripper.getText(document);
+        rowNo = 0;
+        for (int paraNo = 1; paraNo <= 9; paraNo++) {
+            if(paraNo == 4) continue;
+            String fileName = "para0" + paraNo + ".pdf";
+            PDDocument document = PDDocument.load(new File(fileName));
+            if (!document.isEncrypted()) {
+                System.out.println("Now reading " + fileName + "...");
+                PDFTextStripper stripper = new PDFTextStripper();
+                text = stripper.getText(document);
+                // System.out.println(text.length());
+            }
+            for (int i = 1; i <= 45; i++) {
+                parseEachPage();
+                System.out.println("Now writing " + fileName + " page " + i + " to Excel...");
+                writeXLSXFile(i+rowNo);
+            }
+            rowNo += 45;
+            // System.out.println(rowNo);
+            document.close();
         }
-        for(int i = 1; i < 45; i ++) {
-            if(i != 1) break;
-            System.out.println(text.length());
-            parseEachPage();
-            writeXLSXFile(i);
-        }
-        document.close();
+        System.out.println("=======================\n" + "pdf to excel finished...");
     }
 }
